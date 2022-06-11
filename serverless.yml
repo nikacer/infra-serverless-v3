@@ -1,0 +1,69 @@
+org: nikacer
+console: true
+service: pet-our-buddies
+frameworkVersion: "3"
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-2
+  stackName: pet-our-buddies
+  memorySize: 128
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "dynamodb:PutItem"
+            - "dynamodb:Get*"
+            - "dynamodb:Scan*"
+            - "dynamodb:UpdateItem"
+            - "dynamodb:DeleteItem"
+            - "dynamodb:Query"
+          Resource:
+            - Fn::GetAtt: [usersTable, Arn]
+  environment:
+    REGION: ${self:provider.region}
+    DYNAMODB_USER_TABLE: ${self:custom.userTableName}
+custom:
+  userTableName: ${self:service}-security-users-${sls:stage}
+  paths:
+    users: users
+    places: places
+    pets: pets
+  httpApi:
+    metrics: true
+package:
+  individually: true
+functions:
+  login:
+    handler: security/login/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.users}/login
+resources:
+  Resources:
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.userTableName}
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: email-index
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              NonKeyAttributes: []
+              ProjectionType: "ALL"
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
