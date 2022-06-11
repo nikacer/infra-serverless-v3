@@ -21,6 +21,8 @@ provider:
             - "dynamodb:Query"
           Resource:
             - Fn::GetAtt: [usersTable, Arn]
+            - Fn::GetAtt: [momentsTableName, Arn]
+            - Fn::GetAtt: [petsTable, Arn]
   environment:
     REGION: ${self:provider.region}
     DYNAMODB_USER_TABLE: ${self:custom.dynamoTables.userTableName}
@@ -48,6 +50,36 @@ functions:
       - http:
           method: post
           path: ${self:custom.paths.users}/login
+  logout:
+    handler: security/logout/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.users}/logout
+  register:
+    handler: security/register/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.users}/register
+  addPlace:
+    handler: places/add/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.places}/add
+  searchPlace:
+    handler: places/search/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.places}/search
+  commentPlace:
+    handler: places/comment/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.places}/comment
 resources:
   Resources:
     usersTable:
