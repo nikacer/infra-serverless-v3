@@ -23,9 +23,16 @@ provider:
             - Fn::GetAtt: [usersTable, Arn]
   environment:
     REGION: ${self:provider.region}
-    DYNAMODB_USER_TABLE: ${self:custom.userTableName}
+    DYNAMODB_USER_TABLE: ${self:custom.dynamoTables.userTableName}
+    DYNAMODB_MOMENTS_TABLE: ${self:custom.dynamoTables.momentsTableName}
+    DYNAMODB_PETS_TABLE: ${self:custom.dynamoTables.petsTableName}
+    DYNAMODB_PLACES_TABLE: ${self:custom.dynamoTables.placesTableName}
 custom:
-  userTableName: ${self:service}-security-users-${sls:stage}
+  dynamoTables:
+    userTableName: ${self:service}-users-${sls:stage}
+    momentsTableName: ${self:service}-moments-${sls:stage}
+    petsTableName: ${self:service}-pets-${sls:stage}
+    placesTableName: ${self:service}-places-${sls:stage}
   paths:
     users: users
     places: places
@@ -46,7 +53,7 @@ resources:
     usersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:custom.userTableName}
+        TableName: ${self:custom.dynamoTables.userTableName}
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
@@ -62,8 +69,100 @@ resources:
               - AttributeName: email
                 KeyType: HASH
             Projection:
-              NonKeyAttributes: []
               ProjectionType: "ALL"
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+    momentsTableName:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamoTables.momentsTableName}
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: coordinates
+            AttributeType: S
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: coordinates-index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: coordinates
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: name-index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: name
+                KeyType: RANGE
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+            Projection:
+              ProjectionType: ALL
+    petsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamoTables.petsTableName}
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: size
+            AttributeType: S
+          - AttributeName: ageRange
+            AttributeType: S
+          - AttributeName: breed
+            AttributeType: S
+        GlobalSecondaryIndexes:
+          - IndexName: size_index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: size
+                KeyType: RANGE
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ageRange_index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: ageRange
+                KeyType: RANGE
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+            Projection:
+              ProjectionType: ALL
+          - IndexName: breed_index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: breed
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
