@@ -23,18 +23,29 @@ provider:
             - Fn::GetAtt: [usersTable, Arn]
             - Fn::GetAtt: [momentsTableName, Arn]
             - Fn::GetAtt: [petsTable, Arn]
+        - Effect: "Allow"
+          Action:
+            - cognito-idp:AdminInitiateAuth
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminSetUserPassword
+          Resource:
+            - Fn::GetAtt: [userPool, Arn]
   environment:
     REGION: ${self:provider.region}
     DYNAMODB_USER_TABLE: ${self:custom.dynamoTables.userTableName}
     DYNAMODB_MOMENTS_TABLE: ${self:custom.dynamoTables.momentsTableName}
     DYNAMODB_PETS_TABLE: ${self:custom.dynamoTables.petsTableName}
     DYNAMODB_PLACES_TABLE: ${self:custom.dynamoTables.placesTableName}
+    USER_POOL_ID: { Ref: userPool }
+    client_id: { Ref: WebCognitoUserPoolClient }
 custom:
   dynamoTables:
     userTableName: ${self:service}-users-${sls:stage}
     momentsTableName: ${self:service}-moments-${sls:stage}
     petsTableName: ${self:service}-pets-${sls:stage}
     placesTableName: ${self:service}-places-${sls:stage}
+  security:
+    cognitoName: ${self:service}-accessAuth-${sls:stage}
   paths:
     users: users
     places: places
@@ -56,6 +67,10 @@ functions:
       - http:
           method: post
           path: ${self:custom.paths.users}/logout
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+
   register:
     handler: security/register/src/index.handler
     events:
@@ -198,3 +213,73 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
+    userPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:custom.security.cognitoName}
+        VerificationMessageTemplate:
+          DefaultEmailOption: CONFIRM_WITH_CODE
+          EmailMessage: "Gracias por registrate, tu código de verificación es {####}"
+          EmailSubject: ${self:service} Código de verificación
+        UserPoolTags:
+          My: true
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        UsernameConfiguration:
+          CaseSensitive: false
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
+        Schema:
+          - Name: email
+            Required: true
+            Mutable: true
+            AttributeDataType: String
+            StringAttributeConstraints:
+              MinLength: "7"
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 6
+            RequireNumbers: true
+    WebCognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: !Ref userPool
+        ClientName: user-pool-web
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_REFRESH_TOKEN_AUTH
+    ServerCognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: server
+        UserPoolId: !Ref userPool
+        ExplicitAuthFlows:
+          - ALLOW_ADMIN_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+        # [ALLOW_CUSTOM_AUTH, ADMIN_NO_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_PASSWORD_AUTH, ALLOW_USER_SRP_AUTH, CUSTOM_AUTH_FLOW_ONLY, USER_PASSWORD_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH]]
+    CognitoAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        AuthorizerResultTtlInSeconds: 300
+        RestApiId: !Ref ApiGatewayRestApi
+        Name: cognito_auth
+        IdentitySource: method.request.header.Authorization
+        Type: COGNITO_USER_POOLS
+        ProviderARNs:
+          - !GetAtt userPool.Arn
+  Outputs:
+    CognitoUserPoolId:
+      Value: !Ref userPool
+
+    CognitoUserPoolArn:
+      Value: !GetAtt userPool.Arn
+
+    CognitoUserPoolWebClientId:
+      Value: !Ref WebCognitoUserPoolClient
+
+    CognitoUserPoolServerClientId:
+      Value: !Ref ServerCognitoUserPoolClient
