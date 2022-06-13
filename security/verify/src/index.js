@@ -1,11 +1,14 @@
 "use strict";
-const { sendResponse, requestTransform } = require("../../../response.class");
+const { sendResponse } = require("../../../response.class");
 const AWS = require("aws-sdk");
 
 module.exports.handler = async (event, context, callback) => {
   console.info("event", event);
-
-  const { body } = requestTransform(event);
+  const { isBase64Encoded, body: bodyPlain } = event;
+  const decodeBase64 = isBase64Encoded
+    ? Buffer.from(bodyPlain, "base64").toString()
+    : bodyPlain;
+  const body = JSON.parse(decodeBase64);
   const dynamoDb = new AWS.DynamoDB.DocumentClient();
   const putParams = {
     TableName: process.env.DYNAMODB_USER_TABLE,
@@ -14,7 +17,7 @@ module.exports.handler = async (event, context, callback) => {
     },
   };
   try {
-    // await dynamoDb.put(putParams).promise();
+    await dynamoDb.put(putParams).promise();
     sendResponse(200, "ok lambda access", callback);
   } catch (err) {
     sendResponse(500, err, callback);

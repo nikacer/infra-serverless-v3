@@ -70,7 +70,12 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: !Ref CognitoAuthorizer
-
+  verifyToken:
+    handler: security/verify/src/index.handler
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.users}/verify
   register:
     handler: security/register/src/index.handler
     events:
@@ -83,18 +88,27 @@ functions:
       - http:
           method: post
           path: ${self:custom.paths.places}/add
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
   searchPlace:
     handler: places/search/src/index.handler
     events:
       - http:
           method: post
           path: ${self:custom.paths.places}/search
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
   commentPlace:
     handler: places/comment/src/index.handler
     events:
       - http:
           method: post
           path: ${self:custom.paths.places}/comment
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
 resources:
   Resources:
     usersTable:
