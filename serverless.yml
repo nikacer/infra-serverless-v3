@@ -37,7 +37,7 @@ provider:
     DYNAMODB_PETS_TABLE: ${self:custom.dynamoTables.petsTableName}
     DYNAMODB_PLACES_TABLE: ${self:custom.dynamoTables.placesTableName}
     USER_POOL_ID: { Ref: userPool }
-    client_id: { Ref: WebCognitoUserPoolClient }
+    SERVER_COGNITO_ID: { Ref: ServerCognitoUserPoolClient }
 custom:
   dynamoTables:
     userTableName: ${self:service}-users-${sls:stage}
@@ -52,17 +52,43 @@ custom:
     pets: pets
   httpApi:
     metrics: true
+  serverless-offline:
+    httpPort: 5000
+    stageVariables:
+      foo: "bar"
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      heapInitial: 200m
+      heapMax: 1g
+      migrate: true
+      seed: true
+      convertEmptyValues: true
 package:
   individually: true
+  exclude:
+    - "*/**"
+    - "**/package-lock.json"
+  include:
+    - "commons/**"
 functions:
   login:
     handler: security/login/src/index.handler
+    package:
+      include:
+        - "security/login/**"
     events:
       - http:
           method: post
           path: ${self:custom.paths.users}/login
   logout:
     handler: security/logout/src/index.handler
+    package:
+      include:
+        - "security/logout/**"
     events:
       - http:
           method: post
@@ -72,18 +98,27 @@ functions:
             authorizerId: !Ref CognitoAuthorizer
   verifyToken:
     handler: security/verify/src/index.handler
+    package:
+      include:
+        - "security/verify/**"
     events:
       - http:
           method: post
           path: ${self:custom.paths.users}/verify
   register:
     handler: security/register/src/index.handler
+    package:
+      include:
+        - "security/register/**"
     events:
       - http:
           method: post
           path: ${self:custom.paths.users}/register
   addPlace:
     handler: places/add/src/index.handler
+    package:
+      include:
+        - "places/add/**"
     events:
       - http:
           method: post
@@ -93,6 +128,9 @@ functions:
             authorizerId: !Ref CognitoAuthorizer
   searchPlace:
     handler: places/search/src/index.handler
+    package:
+      include:
+        - "places/search/**"
     events:
       - http:
           method: post
@@ -102,6 +140,9 @@ functions:
             authorizerId: !Ref CognitoAuthorizer
   commentPlace:
     handler: places/comment/src/index.handler
+    package:
+      include:
+        - "places/comment/**"
     events:
       - http:
           method: post
@@ -272,7 +313,7 @@ resources:
         ClientName: server
         UserPoolId: !Ref userPool
         ExplicitAuthFlows:
-          - ALLOW_ADMIN_USER_PASSWORD_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
         # [ALLOW_CUSTOM_AUTH, ADMIN_NO_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_PASSWORD_AUTH, ALLOW_USER_SRP_AUTH, CUSTOM_AUTH_FLOW_ONLY, USER_PASSWORD_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH]]
     CognitoAuthorizer:
@@ -297,3 +338,6 @@ resources:
 
     CognitoUserPoolServerClientId:
       Value: !Ref ServerCognitoUserPoolClient
+plugins:
+  - serverless-offline
+  - serverless-dynamodb-local

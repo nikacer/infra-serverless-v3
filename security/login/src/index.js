@@ -1,5 +1,8 @@
 "use strict";
-const { sendResponse, requestTransform } = require("../../../response.class");
+const {
+  sendResponse,
+  requestTransform,
+} = require("../../../commons/response.class");
 const AWS = require("aws-sdk");
 
 module.exports.handler = async (event, context, callback) => {

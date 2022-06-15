@@ -1,6 +1,11 @@
 "use strict";
-const { sendResponse, requestTransform } = require("../../../response.class");
+const {
+  sendResponse,
+  requestTransform,
+} = require("../../../commons/response.class");
 const AWS = require("aws-sdk");
+const AmazonCognitoIdentity = require("amazon-cognito-identity-js");
+const util = require("util");
 
 const cognito = new AWS.CognitoIdentityServiceProvider({
   apiVersion: "2016-04-18",
@@ -8,29 +13,40 @@ const cognito = new AWS.CognitoIdentityServiceProvider({
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-const USERPOOLID = process.env.USER_POOL_ID;
-module.exports.handler = async (event, context, callback) => {
+/**
+ * config cognito
+ */
+
+const poolData = {
+  UserPoolId: process.env.USER_POOL_ID, // Your user pool id here
+  ClientId: process.env.SERVER_COGNITO_ID, // Your client id here
+};
+console.log(JSON.stringify(poolData, null, 10));
+
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+module.exports.handler = (event, context, callback) => {
   console.info("event", event);
+
   const { body } = requestTransform(event);
+  //////
 
-  const cognitoParams = {
-    UserPoolId: USERPOOLID,
-    Username: body.email,
-    UserAttributes: [
-      {
-        Name: "email",
-        Value: body.email,
-      },
-      {
-        Name: "email_verified",
-        Value: "true",
-      },
-    ],
-    TemporaryPassword: body.password,
-  };
+  const attributeList = [];
+  attributeList.push(
+    new AmazonCognitoIdentity.CognitoUserAttribute({
+      Name: "email",
+      Value: body.email,
+    })
+  );
 
-  console.info("cognitoParams", cognitoParams);
+  attributeList.push(
+    new AmazonCognitoIdentity.CognitoUserAttribute({
+      Name: "custom:scope",
+      Value: "user",
+    })
+  );
 
+  ///////
   const putParams = {
     TableName: process.env.DYNAMODB_USER_TABLE,
     Item: {
@@ -45,16 +61,23 @@ module.exports.handler = async (event, context, callback) => {
   console.info("putParams", putParams);
 
   try {
-    const responseCognito = await cognito
-      .adminCreateUser(cognitoParams)
-      .promise();
-    console.info("responseCognito", responseCognito);
-
-    const responseDynamo = await dynamoDb.put(putParams).promise();
-
-    console.info("responseDynamo", responseDynamo);
-
-    sendResponse(200, { message: "success" }, callback);
+    userPool.signUp(
+      body.email,
+      body.password,
+      attributeList,
+      null,
+      async (err, result) => {
+        if (err) throw err;
+        cognitoUser = result.user;
+        const responseDynamo = await dynamoDb.put(putParams).promise();
+        console.info("responseDynamo", responseDynamo);
+        sendResponse(
+          200,
+          { message: "success", user: cognitoUser.getUsername() },
+          callback
+        );
+      }
+    );
   } catch (error) {
     sendResponse(500, { error }, callback);
   }

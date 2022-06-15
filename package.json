@@ -4,16 +4,33 @@
   "description": "",
   "main": "handler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "subpkg install"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "package": "^1.0.1",
-    "serverless-import-config-plugin": "^0.1.3"
-  },
   "dependencies": {
+    "amazon-cognito-identity-js": "^5.2.9",
+    "joi": "^17.6.0",
+    "jsonwebtoken": "^8.5.1",
+    "jwk-to-pem": "^2.0.5",
     "uuid": "^8.3.2"
-  }
+  },
+  "devDependencies": {
+    "serverless-dynamodb-local": "^0.2.40",
+    "serverless-offline": "^8.8.0",
+    "subpackage": "^1.1.0"
+  },
+  "subPackages": [
+    "pets/add",
+    "pets/delete",
+    "places/add",
+    "places/comment",
+    "places/search",
+    "security/login",
+    "security/logout",
+    "security/register",
+    "security/verify"
+  ]
 }
