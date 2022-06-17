@@ -10,16 +10,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "amazon-cognito-identity-js": "^5.2.9",
-    "joi": "^17.6.0",
-    "jsonwebtoken": "^8.5.1",
-    "jwk-to-pem": "^2.0.5",
-    "uuid": "^8.3.2"
-  },
   "devDependencies": {
     "serverless-dynamodb-local": "^0.2.40",
     "serverless-offline": "^8.8.0",
+    "serverless-offline-local-authorizers-plugin": "^1.2.0",
     "subpackage": "^1.1.0"
   },
   "subPackages": [

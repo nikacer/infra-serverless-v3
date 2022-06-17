@@ -329,13 +329,10 @@ resources:
   Outputs:
     CognitoUserPoolId:
       Value: !Ref userPool
-
     CognitoUserPoolArn:
       Value: !GetAtt userPool.Arn
-
     CognitoUserPoolWebClientId:
       Value: !Ref WebCognitoUserPoolClient
-
     CognitoUserPoolServerClientId:
       Value: !Ref ServerCognitoUserPoolClient
 plugins:
