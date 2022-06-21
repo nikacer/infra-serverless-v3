@@ -15,20 +15,29 @@ const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 module.exports.handler = async (event, context, callback) => {
 
   const { body } = requestTransform(event);
-
-const user = new AmazonCognitoIdentity.CognitoUser({
-  Username: body.email,
-  Pool: userPool,
-});
-
-
   console.info("body",body)
-  console.info("userPool",userPool)
-  user
-    .confirmRegistration(body.code, true, (error, result) => {
-      console.info("Response", { error, result });
-      if (error) sendResponse(500, error, callback);
-      sendResponse(200, result, callback);
-    });
+
+  try{
+    const {statusCode,result} = await confirmRegistrationResponse({body})
+    sendResponse(statusCode, result, callback);
+
+  } catch({statusCode, error}){
+    sendResponse(statusCode, error, callback);
+  }
   
 };
+
+const confirmRegistrationResponse = ({body}) => new Promise((resolve,reject)=>{
+
+  const user = new AmazonCognitoIdentity.CognitoUser({
+    Username: body.email,
+    Pool: userPool,
+  });
+
+  console.info("userPool", userPool);
+  user.confirmRegistration(body.code, true, (error, result) => {
+    console.info("Response", { error, result });
+    if (error) reject({statusCode: 500, error})
+    resolve({ statusCode: 200, result });
+  });
+})

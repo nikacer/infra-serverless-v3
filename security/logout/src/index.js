@@ -5,23 +5,29 @@ const {
 } = require("../../../commons/response.class");
 const AWS = require("aws-sdk");
 
-const cognito = new AWS.CognitoIdentityServiceProvider({
-  apiVersion: "2016-04-18",
-});
 
-const UserPoolId = process.env.USER_POOL_ID;
+const poolData = {
+  UserPoolId: process.env.USER_POOL_ID, // Your user pool id here
+  ClientId: process.env.SERVER_COGNITO_ID, // Your client id here
+};
+
+AWS.config.update({ region: process.env.REGION });
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+
 
 module.exports.handler = async (event, context, callback) => {
   console.info("event", event);
 
-  const { body } = requestTransform(event);
+  const { body, headers } = requestTransform(event);
 
-  var params = {
-    UserPoolId,
-    Username: body.email /* required */,
-  };
-  cognito.adminUserGlobalSignOut(params, function (err, data) {
-    if (err) sendResponse(500, err, callback);
-    else sendResponse(200, data, callback);
-  });
+  const responseLogout = await logout({headers})
+  sendResponse(200, responseLogout.result)
 };
+
+const logout = ({headers}) => new Promise((resolve,reject)=>{
+  const payload = headers.Authorization.split(".")[1];
+  const buff = Buffer.from(payload, 'base64');
+  const str = buff.toString('utf-8');
+  resolve({ statusCode: 200, result: { auth: headers.Authorization, str } });
+})

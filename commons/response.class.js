@@ -6,6 +6,7 @@ function sendResponse(statusCode, body, callback) {
     };
 
     callback(null, response);
+    return;
   } catch (err) {
     console.info("other ", err);
   }

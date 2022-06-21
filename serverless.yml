@@ -77,6 +77,7 @@ package:
 functions:
   login:
     handler: security/login/src/index.handler
+    timeout: 15
     package:
       include:
         - "security/login/**"
@@ -315,6 +316,7 @@ resources:
         ExplicitAuthFlows:
           - ALLOW_USER_PASSWORD_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
         # [ALLOW_CUSTOM_AUTH, ADMIN_NO_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_PASSWORD_AUTH, ALLOW_USER_SRP_AUTH, CUSTOM_AUTH_FLOW_ONLY, USER_PASSWORD_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH]]
     CognitoAuthorizer:
       Type: AWS::ApiGateway::Authorizer

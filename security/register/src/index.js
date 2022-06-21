@@ -29,12 +29,11 @@ module.exports.handler = async (event, context, callback) => {
   console.info("event", event);
   const { body } = requestTransform(event);
   try{
-    const response = await registerUser(body)
-    console.info("ResponseRegisterUser", { statusCode, confirmationCode, message });
-    sendResponse(statusCode, {confirmationCode,message},callback)
+    const responseRegister = await registerUser(body)
+    console.info("ResponseRegisterUser", responseRegister);
+    sendResponse(responseRegister.statusCode, responseRegister, callback);
   }catch(err){
     sendResponse(err.statusCode,err, callback);
-
   }
 };
 
@@ -66,13 +65,6 @@ async function registerUser(json) {
       })
     );
 
-    // attributeList.push(
-    //   new AmazonCognitoIdentity.CognitoUserAttribute({
-    //     Name: "custom:confirmationCode",
-    //     Value: confirmationCode,
-    //   })
-    // );
-
     const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
     console.info("poolData",poolData)
 
@@ -82,16 +74,17 @@ async function registerUser(json) {
       attributeList,
       null,
       function (err, result) {
-        if (err) {
+        console.info("signUp Error", err),
+        console.info("signUp result", result)
+        if (err &&  err.statusCode) {
           return reject({
-            statusCode: 500,
-            err,
+            statusCode: err.statusCode,
+            code: err.code,
           });
         }
 
         resolve({
           statusCode: 200,
-          confirmationCode,
           message: "User successfully registered",
         });
       }
