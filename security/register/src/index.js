@@ -5,10 +5,8 @@ const {
 } = require("../../../commons/response.class");
 const AWS = require("aws-sdk");
 const AmazonCognitoIdentity = require("amazon-cognito-identity-js");
+const {put} = require("../../../commons/dynamo.class")
 
-const cognito = new AWS.CognitoIdentityServiceProvider({
-  apiVersion: "2016-04-18",
-});
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
@@ -37,7 +35,7 @@ module.exports.handler = async (event, context, callback) => {
   }
 };
 
-function saveNewUser(){
+function saveNewUser(body){
 
    const putParams = {
      TableName: process.env.DYNAMODB_USER_TABLE,
@@ -50,8 +48,11 @@ function saveNewUser(){
      },
    };
    console.info("putParams", putParams);
+
+   return put(putParams).promise();
   
 }
+
 async function registerUser(json) {
   const { email,password } = json;
 
@@ -65,15 +66,13 @@ async function registerUser(json) {
       })
     );
 
-    const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-    console.info("poolData",poolData)
 
     userPool.signUp(
       email,
       password,
       attributeList,
       null,
-      function (err, result) {
+      async function (err, result) {
         console.info("signUp Error", err),
         console.info("signUp result", result)
         if (err &&  err.statusCode) {
@@ -82,6 +81,10 @@ async function registerUser(json) {
             code: err.code,
           });
         }
+
+        const dynamoResponse = await saveNewUser(json)
+
+        console.info(dynamoResponse)
 
         resolve({
           statusCode: 200,
@@ -94,23 +97,3 @@ async function registerUser(json) {
 
 
 
-
-// userPool
-//   .signUp(
-//     body.email,
-//     body.password,
-//     attributeList,
-//     null,
-//     async (err, result) => {
-//       if (err) throw err;
-//       cognitoUser = result.user;
-//       const responseDynamo = await dynamoDb.put(putParams).promise();
-//       console.info("responseDynamo", responseDynamo);
-//       sendResponse(
-//         200,
-//         { message: "success", user: cognitoUser.getUsername() },
-//         callback
-//       );
-//     }
-//   )
-//   .promise();

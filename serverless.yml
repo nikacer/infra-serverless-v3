@@ -42,7 +42,7 @@ custom:
   dynamoTables:
     userTableName: ${self:service}-users-${sls:stage}
     momentsTableName: ${self:service}-moments-${sls:stage}
-    petsTableName: ${self:service}-pets-${sls:stage}
+    petsTableName: ${self:service}-pet-${sls:stage}
     placesTableName: ${self:service}-places-${sls:stage}
   security:
     cognitoName: ${self:service}-accessAuth-${sls:stage}
@@ -50,23 +50,6 @@ custom:
     users: users
     places: places
     pets: pets
-  httpApi:
-    metrics: true
-  serverless-offline:
-    httpPort: 5000
-    stageVariables:
-      foo: "bar"
-  dynamodb:
-    stages:
-      - dev
-    start:
-      port: 8000
-      inMemory: true
-      heapInitial: 200m
-      heapMax: 1g
-      migrate: true
-      seed: true
-      convertEmptyValues: true
 package:
   individually: true
   exclude:
@@ -77,7 +60,7 @@ package:
 functions:
   login:
     handler: security/login/src/index.handler
-    timeout: 15
+    timeout: 20
     package:
       include:
         - "security/login/**"
@@ -148,6 +131,42 @@ functions:
       - http:
           method: post
           path: ${self:custom.paths.places}/comment
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+  petsAdd:
+    handler: pets/add/src/index.handler
+    package:
+      include:
+        - "pets/add/**"
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.pets}/add
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+  petsDelete:
+    handler: pets/delete/src/index.handler
+    package:
+      include:
+        - "pets/delete/**"
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.pets}/del
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+  petsList:
+    handler: pets/list/src/index.handler
+    package:
+      include:
+        - "pets/list/**"
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.pets}/list
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: !Ref CognitoAuthorizer
@@ -226,8 +245,12 @@ resources:
         KeySchema:
           - AttributeName: id
             KeyType: HASH
+          - AttributeName: emailUser
+            KeyType: RANGE
         AttributeDefinitions:
           - AttributeName: id
+            AttributeType: S
+          - AttributeName: emailUser
             AttributeType: S
           - AttributeName: size
             AttributeType: S
@@ -263,6 +286,17 @@ resources:
               - AttributeName: id
                 KeyType: HASH
               - AttributeName: breed
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: email_index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: emailUser
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
@@ -337,6 +371,3 @@ resources:
       Value: !Ref WebCognitoUserPoolClient
     CognitoUserPoolServerClientId:
       Value: !Ref ServerCognitoUserPoolClient
-plugins:
-  - serverless-offline
-  - serverless-dynamodb-local

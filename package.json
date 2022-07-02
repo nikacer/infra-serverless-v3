@@ -12,8 +12,10 @@
   "license": "ISC",
   "devDependencies": {
     "serverless-dynamodb-local": "^0.2.40",
+    "serverless-localstack": "^0.4.36",
     "serverless-offline": "^8.8.0",
     "serverless-offline-local-authorizers-plugin": "^1.2.0",
+    "serverless-sam": "^0.2.0",
     "subpackage": "^1.1.0"
   },
   "subPackages": [
