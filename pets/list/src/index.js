@@ -1,5 +1,5 @@
 "use strict";
-const {query} = require("../../../commons/dynamo.class");
+const {scan} = require("../../../commons/dynamo.class");
 const {processTOKEN} = require("../../../commons/utils.class")
 const {sendResponse} = require("../../../commons/response.class")
 
@@ -19,7 +19,7 @@ module.exports.handler = async (event, context, callback) => {
   console.info("params", params)
 
  try {
-    const {data} = await query(params);
+    const {data} = await scan(params);
     console.info(data);
 
     sendResponse(200, data, callback);

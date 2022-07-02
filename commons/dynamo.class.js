@@ -15,9 +15,18 @@ async function get(params){
   }
 }
 
-async function query(params){
+async function scan(params){
    try {
      const data = await dynamoDb.scan(params).promise();
+     return { data };
+   } catch (err) {
+     return { err };
+   }
+}
+
+async function del(params){
+   try {
+     const data = await dynamoDb.delete(params).promise();
      return { data };
    } catch (err) {
      return { err };
@@ -27,5 +36,6 @@ async function query(params){
 module.exports = {
     put,
     get, 
-    query
+    scan,
+    del
 }
