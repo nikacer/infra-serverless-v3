@@ -33,9 +33,19 @@ async function del(params){
    }
 }
 
+async function update(params) {
+  try {
+    const data = await dynamoDb.update(params).promise();
+    return { data };
+  } catch (err) {
+    return { err };
+  }
+}
+
 module.exports = {
     put,
     get, 
     scan,
-    del
+    del,
+    update
 }

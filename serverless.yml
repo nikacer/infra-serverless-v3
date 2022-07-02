@@ -35,7 +35,6 @@ provider:
     DYNAMODB_USER_TABLE: ${self:custom.dynamoTables.userTableName}
     DYNAMODB_MOMENTS_TABLE: ${self:custom.dynamoTables.momentsTableName}
     DYNAMODB_PETS_TABLE: ${self:custom.dynamoTables.petsTableName}
-    DYNAMODB_PLACES_TABLE: ${self:custom.dynamoTables.placesTableName}
     USER_POOL_ID: { Ref: userPool }
     SERVER_COGNITO_ID: { Ref: ServerCognitoUserPoolClient }
 custom:
@@ -43,12 +42,11 @@ custom:
     userTableName: ${self:service}-users-${sls:stage}
     momentsTableName: ${self:service}-moments-${sls:stage}
     petsTableName: ${self:service}-pet-${sls:stage}
-    placesTableName: ${self:service}-places-${sls:stage}
   security:
     cognitoName: ${self:service}-accessAuth-${sls:stage}
   paths:
     users: users
-    places: places
+    places: moments
     pets: pets
 package:
   individually: true
@@ -130,7 +128,7 @@ functions:
     events:
       - http:
           method: post
-          path: ${self:custom.paths.places}/comment
+          path: ${self:custom.paths.places}/comment/{id}
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: !Ref CognitoAuthorizer
