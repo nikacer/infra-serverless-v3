@@ -23,6 +23,7 @@ provider:
             - Fn::GetAtt: [usersTable, Arn]
             - Fn::GetAtt: [momentsTableName, Arn]
             - Fn::GetAtt: [petsTable, Arn]
+            - Fn::GetAtt: [activitiesTable, Arn]
         - Effect: "Allow"
           Action:
             - cognito-idp:AdminInitiateAuth
@@ -35,19 +36,22 @@ provider:
     DYNAMODB_USER_TABLE: ${self:custom.dynamoTables.userTableName}
     DYNAMODB_MOMENTS_TABLE: ${self:custom.dynamoTables.momentsTableName}
     DYNAMODB_PETS_TABLE: ${self:custom.dynamoTables.petsTableName}
+    DYNAMODB_ACTIVITIES_TABLE: ${self:custom.dynamoTables.activitiesTableName}
     USER_POOL_ID: { Ref: userPool }
     SERVER_COGNITO_ID: { Ref: ServerCognitoUserPoolClient }
 custom:
   dynamoTables:
     userTableName: ${self:service}-users-${sls:stage}
     momentsTableName: ${self:service}-moments-${sls:stage}
-    petsTableName: ${self:service}-pet-${sls:stage}
+    petsTableName: ${self:service}-pets-${sls:stage}
+    activitiesTableName: ${self:service}-activities-${sls:stage}
   security:
     cognitoName: ${self:service}-accessAuth-${sls:stage}
   paths:
     users: users
     places: moments
     pets: pets
+    activities: activities
 package:
   individually: true
   exclude:
@@ -151,8 +155,8 @@ functions:
         - "pets/delete/**"
     events:
       - http:
-          method: post
-          path: ${self:custom.paths.pets}/del
+          method: DELETE
+          path: ${self:custom.paths.pets}/del/{id}
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: !Ref CognitoAuthorizer
@@ -168,6 +172,15 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: !Ref CognitoAuthorizer
+  activitiesList:
+    handler: activities/list/src/index.handler
+    package:
+      include:
+        - "activities/list/**"
+    events:
+      - http:
+          method: get
+          path: ${self:custom.paths.activities}/list
 resources:
   Resources:
     usersTable:
@@ -193,6 +206,19 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
+    activitiesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamoTables.activitiesTableName}
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
     momentsTableName:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -343,6 +369,8 @@ resources:
     ServerCognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
       Properties:
+        AccessTokenValidity: 24
+        IdTokenValidity: 24
         ClientName: server
         UserPoolId: !Ref userPool
         ExplicitAuthFlows:

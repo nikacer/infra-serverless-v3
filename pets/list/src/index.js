@@ -10,10 +10,11 @@ module.exports.handler = async (event, context, callback) => {
   const { email } = processTOKEN(event.headers)
  const params = {
    TableName: process.env.DYNAMODB_PETS_TABLE,
-   FilterExpression: "#emailUser = :email",
-   ExpressionAttributeValues: { ":email": email },
+   FilterExpression: "#emailUser = :email and #delete= :status",
+   ExpressionAttributeValues: { ":email": email,":status":false},
    ExpressionAttributeNames: {
      "#emailUser": "emailUser",
+     "#delete":"delete"
    },
  };
   console.info("params", params)

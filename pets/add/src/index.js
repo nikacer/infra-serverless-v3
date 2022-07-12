@@ -12,12 +12,16 @@ module.exports.handler = async (event, context, callback) => {
 
   const putParams = {
     TableName: process.env.DYNAMODB_PETS_TABLE,
+    ReturnValues: "ALL_OLD",
     Item: {
-      id: body.id? body.id : uuidv4(),
+      id: body.id ? body.id : uuidv4(),
       size: body.size,
       ageRange: body.ageRange,
       breed: body.breed,
+      name: body.name,
+      type: body.type,
       emailUser: email,
+      delete: false,
     },
   };
   console.info("putParams", putParams);

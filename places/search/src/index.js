@@ -1,7 +1,12 @@
 "use strict";
-const { sendResponse } = require("../../../response.class");
+const { sendResponse } = require("../../../commons/response.class");
+const {scan} = require("../../../commons/dynamo.class")
+
 
 module.exports.handler = async (event, context, callback) => {
-  console.info("event", event);
-  sendResponse(200, "ok lambda search pleaces", callback);
+  const params = {
+    TableName: process.env.DYNAMODB_MOMENTS_TABLE,
+  };
+  const momentsResponse = await scan(params)
+  sendResponse(200, momentsResponse, callback);
 };

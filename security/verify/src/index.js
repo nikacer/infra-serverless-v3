@@ -18,6 +18,7 @@ module.exports.handler = async (event, context, callback) => {
   console.info("body",body)
 
   try{
+    if(!body.code) throw { statusCode: 500, error: "campo vacío" };
     const {statusCode,result} = await confirmRegistrationResponse({body})
     sendResponse(statusCode, result, callback);
 

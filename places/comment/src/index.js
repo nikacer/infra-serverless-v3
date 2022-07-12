@@ -23,10 +23,19 @@ module.exports.handler = async (event, context, callback) => {
       "#comments": "comments",
     },
     ExpressionAttributeValues: {
-      ":comment": [{comment, rate, email}],
+      ":comment": [
+        {
+          comment,
+          rate,
+          email,
+          create: Math.floor(+new Date() / 1000),
+          update: Math.floor(+new Date() / 1000),
+        },
+      ],
       ":empty_list": [],
     },
   };
+  console.info(JSON.stringify(params.ExpressionAttributeValues[":comment"]));
   const response = await update(params)
 
   sendResponse(200, response, callback);

@@ -19,9 +19,10 @@ module.exports.handler = async (event, context, callback) => {
       id: body.id ? body.id : uuidv4(),
       name: body.name,
       location: body.location,
-      activity: body.acetivity,
+      activity: body.activity,
       emailUser: email,
     },
+    ReturnValues: "ALL_OLD",
   };
 
   console.info("putParams", putParams);

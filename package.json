@@ -28,5 +28,9 @@
     "security/logout",
     "security/register",
     "security/verify"
-  ]
+  ],
+  "dependencies": {
+    "expo-sharing": "^10.2.0",
+    "react-native-open-maps": "^0.4.0"
+  }
 }
