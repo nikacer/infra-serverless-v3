@@ -39,7 +39,7 @@ module.exports.handler = async (event, context, callback) => {
 
     sendResponse(200,{jwtToken, payload} , callback);
   } catch (error) {
-     console.info("error->", err);
+     console.info("error->", error);
     sendResponse(500, error, callback);
   }
 };
