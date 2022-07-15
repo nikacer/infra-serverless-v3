@@ -1,36 +1,63 @@
 "use strict";
-const { sendResponse, requestTransform } = require("../../../response.class");
+const {
+  sendResponse,
+  requestTransform,
+} = require("../../../commons/response.class");
 const AWS = require("aws-sdk");
-
-const cognito = new AWS.CognitoIdentityServiceProvider({
-  apiVersion: "2016-04-18",
-});
+const AmazonCognitoIdentity = require("amazon-cognito-identity-js");
+const { put } = require("../../../commons/dynamo.class");
+const { object, string, date, ref } = require("yup");
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-const USERPOOLID = process.env.USER_POOL_ID;
+/**
+ * config cognito
+ */
+
+const poolData = {
+  UserPoolId: process.env.USER_POOL_ID, // Your user pool id here
+  ClientId: process.env.SERVER_COGNITO_ID, // Your client id here
+};
+
+AWS.config.update({ region: process.env.REGION });
+
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+const requestValidator = object({
+  email: string()
+    .email("Debe ser un correo corrécto")
+    .required("Email requerido"),
+  firstName: string().required("Nombres requeridos"),
+  lastName: string().required("Apellidos requeridos"),
+  birthDate: date("debe ser AAA/MM.DD")
+    .required("Fecha nacimiento requerida"),
+  gender: string().required("Genero requerido"),
+  password: string()
+    .min(6, "Contraseña debe ser mínimo de 6 carácteres")
+    .required("Contraseña necesaria"),
+  retryPassword: string().oneOf(
+    [ref("password"), null],
+    "Contraseñas no coinciden"
+  ).required(),
+});
+
 module.exports.handler = async (event, context, callback) => {
   console.info("event", event);
   const { body } = requestTransform(event);
 
-  const cognitoParams = {
-    UserPoolId: USERPOOLID,
-    Username: body.email,
-    UserAttributes: [
-      {
-        Name: "email",
-        Value: body.email,
-      },
-      {
-        Name: "email_verified",
-        Value: "true",
-      },
-    ],
-    TemporaryPassword: body.password,
-  };
+  try {
+    await requestValidator.validate(body).catch(({ message }) => {
+      sendResponse(500, { message }, callback);
+    });
+    const responseRegister = await registerUser(body);
+    console.info("ResponseRegisterUser", responseRegister);
+    sendResponse(responseRegister.statusCode, responseRegister, callback);
+  } catch (err) {
+    sendResponse(err.statusCode, err, callback);
+  }
+};
 
-  console.info("cognitoParams", cognitoParams);
-
+function saveNewUser(body) {
   const putParams = {
     TableName: process.env.DYNAMODB_USER_TABLE,
     Item: {
@@ -41,21 +68,48 @@ module.exports.handler = async (event, context, callback) => {
       gender: body.gender,
     },
   };
-
   console.info("putParams", putParams);
 
-  try {
-    const responseCognito = await cognito
-      .adminCreateUser(cognitoParams)
-      .promise();
-    console.info("responseCognito", responseCognito);
+  return put(putParams);
+}
 
-    const responseDynamo = await dynamoDb.put(putParams).promise();
+async function registerUser(json) {
+  const { email, password } = json;
 
-    console.info("responseDynamo", responseDynamo);
+  return new Promise((resolve, reject) => {
+    let attributeList = [];
 
-    sendResponse(200, { message: "success" }, callback);
-  } catch (error) {
-    sendResponse(500, { error }, callback);
-  }
-};
+    attributeList.push(
+      new AmazonCognitoIdentity.CognitoUserAttribute({
+        Name: "email",
+        Value: email,
+      })
+    );
+
+    userPool.signUp(
+      email,
+      password,
+      attributeList,
+      null,
+      async function (err, result) {
+        console.info("signUp Error", err),
+          console.info("signUp result", result);
+        if (err && err.statusCode) {
+          return reject({
+            statusCode: err.statusCode,
+            code: err.code,
+          });
+        }
+
+        const dynamoResponse = await saveNewUser(json);
+
+        console.info(dynamoResponse);
+
+        resolve({
+          statusCode: 200,
+          message: "User successfully registered",
+        });
+      }
+    );
+  });
+}

@@ -4,16 +4,33 @@
   "description": "",
   "main": "handler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "subpkg install"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "package": "^1.0.1",
-    "serverless-import-config-plugin": "^0.1.3"
+    "serverless-dynamodb-local": "^0.2.40",
+    "serverless-localstack": "^0.4.36",
+    "serverless-offline": "^8.8.0",
+    "serverless-offline-local-authorizers-plugin": "^1.2.0",
+    "serverless-sam": "^0.2.0",
+    "subpackage": "^1.1.0"
   },
+  "subPackages": [
+    "pets/add",
+    "pets/delete",
+    "places/add",
+    "places/comment",
+    "places/search",
+    "security/login",
+    "security/logout",
+    "security/register",
+    "security/verify"
+  ],
   "dependencies": {
-    "uuid": "^8.3.2"
+    "expo-sharing": "^10.2.0",
+    "react-native-open-maps": "^0.4.0"
   }
 }

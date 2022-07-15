@@ -1,13 +1,12 @@
-function sendResponse(statusCode, message, callback) {
+function sendResponse(statusCode, body, callback) {
   try {
     const response = {
       statusCode,
-      body: JSON.stringify({
-        message: message,
-      }),
+      body: JSON.stringify(body),
     };
 
     callback(null, response);
+    return;
   } catch (err) {
     console.info("other ", err);
   }

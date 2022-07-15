@@ -23,6 +23,7 @@ provider:
             - Fn::GetAtt: [usersTable, Arn]
             - Fn::GetAtt: [momentsTableName, Arn]
             - Fn::GetAtt: [petsTable, Arn]
+            - Fn::GetAtt: [activitiesTable, Arn]
         - Effect: "Allow"
           Action:
             - cognito-idp:AdminInitiateAuth
@@ -35,34 +36,45 @@ provider:
     DYNAMODB_USER_TABLE: ${self:custom.dynamoTables.userTableName}
     DYNAMODB_MOMENTS_TABLE: ${self:custom.dynamoTables.momentsTableName}
     DYNAMODB_PETS_TABLE: ${self:custom.dynamoTables.petsTableName}
-    DYNAMODB_PLACES_TABLE: ${self:custom.dynamoTables.placesTableName}
+    DYNAMODB_ACTIVITIES_TABLE: ${self:custom.dynamoTables.activitiesTableName}
     USER_POOL_ID: { Ref: userPool }
-    client_id: { Ref: WebCognitoUserPoolClient }
+    SERVER_COGNITO_ID: { Ref: ServerCognitoUserPoolClient }
 custom:
   dynamoTables:
     userTableName: ${self:service}-users-${sls:stage}
     momentsTableName: ${self:service}-moments-${sls:stage}
     petsTableName: ${self:service}-pets-${sls:stage}
-    placesTableName: ${self:service}-places-${sls:stage}
+    activitiesTableName: ${self:service}-activities-${sls:stage}
   security:
     cognitoName: ${self:service}-accessAuth-${sls:stage}
   paths:
     users: users
-    places: places
+    places: moments
     pets: pets
-  httpApi:
-    metrics: true
+    activities: activities
 package:
   individually: true
+  exclude:
+    - "*/**"
+    - "**/package-lock.json"
+  include:
+    - "commons/**"
 functions:
   login:
     handler: security/login/src/index.handler
+    timeout: 20
+    package:
+      include:
+        - "security/login/**"
     events:
       - http:
           method: post
           path: ${self:custom.paths.users}/login
   logout:
     handler: security/logout/src/index.handler
+    package:
+      include:
+        - "security/logout/**"
     events:
       - http:
           method: post
@@ -72,18 +84,27 @@ functions:
             authorizerId: !Ref CognitoAuthorizer
   verifyToken:
     handler: security/verify/src/index.handler
+    package:
+      include:
+        - "security/verify/**"
     events:
       - http:
           method: post
           path: ${self:custom.paths.users}/verify
   register:
     handler: security/register/src/index.handler
+    package:
+      include:
+        - "security/register/**"
     events:
       - http:
           method: post
           path: ${self:custom.paths.users}/register
   addPlace:
     handler: places/add/src/index.handler
+    package:
+      include:
+        - "places/add/**"
     events:
       - http:
           method: post
@@ -93,6 +114,9 @@ functions:
             authorizerId: !Ref CognitoAuthorizer
   searchPlace:
     handler: places/search/src/index.handler
+    package:
+      include:
+        - "places/search/**"
     events:
       - http:
           method: post
@@ -102,13 +126,61 @@ functions:
             authorizerId: !Ref CognitoAuthorizer
   commentPlace:
     handler: places/comment/src/index.handler
+    package:
+      include:
+        - "places/comment/**"
     events:
       - http:
           method: post
-          path: ${self:custom.paths.places}/comment
+          path: ${self:custom.paths.places}/comment/{id}
           authorizer:
             type: COGNITO_USER_POOLS
             authorizerId: !Ref CognitoAuthorizer
+  petsAdd:
+    handler: pets/add/src/index.handler
+    package:
+      include:
+        - "pets/add/**"
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.pets}/add
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+  petsDelete:
+    handler: pets/delete/src/index.handler
+    package:
+      include:
+        - "pets/delete/**"
+    events:
+      - http:
+          method: DELETE
+          path: ${self:custom.paths.pets}/del/{id}
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+  petsList:
+    handler: pets/list/src/index.handler
+    package:
+      include:
+        - "pets/list/**"
+    events:
+      - http:
+          method: post
+          path: ${self:custom.paths.pets}/list
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref CognitoAuthorizer
+  activitiesList:
+    handler: activities/list/src/index.handler
+    package:
+      include:
+        - "activities/list/**"
+    events:
+      - http:
+          method: get
+          path: ${self:custom.paths.activities}/list
 resources:
   Resources:
     usersTable:
@@ -134,6 +206,19 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
+    activitiesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamoTables.activitiesTableName}
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
     momentsTableName:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -184,8 +269,12 @@ resources:
         KeySchema:
           - AttributeName: id
             KeyType: HASH
+          - AttributeName: emailUser
+            KeyType: RANGE
         AttributeDefinitions:
           - AttributeName: id
+            AttributeType: S
+          - AttributeName: emailUser
             AttributeType: S
           - AttributeName: size
             AttributeType: S
@@ -221,6 +310,17 @@ resources:
               - AttributeName: id
                 KeyType: HASH
               - AttributeName: breed
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          - IndexName: email_index
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+              - AttributeName: emailUser
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
@@ -269,11 +369,14 @@ resources:
     ServerCognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
       Properties:
+        AccessTokenValidity: 24
+        IdTokenValidity: 24
         ClientName: server
         UserPoolId: !Ref userPool
         ExplicitAuthFlows:
-          - ALLOW_ADMIN_USER_PASSWORD_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
         # [ALLOW_CUSTOM_AUTH, ADMIN_NO_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_PASSWORD_AUTH, ALLOW_USER_SRP_AUTH, CUSTOM_AUTH_FLOW_ONLY, USER_PASSWORD_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH]]
     CognitoAuthorizer:
       Type: AWS::ApiGateway::Authorizer
@@ -288,12 +391,9 @@ resources:
   Outputs:
     CognitoUserPoolId:
       Value: !Ref userPool
-
     CognitoUserPoolArn:
       Value: !GetAtt userPool.Arn
-
     CognitoUserPoolWebClientId:
       Value: !Ref WebCognitoUserPoolClient
-
     CognitoUserPoolServerClientId:
       Value: !Ref ServerCognitoUserPoolClient
